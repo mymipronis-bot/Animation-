@@ -91,8 +91,8 @@ canvas { position:fixed; inset:0; display:block; width:100vw; height:100vh; }
   <div class="counter" id="counter">💕 0</div>
   <div class="btn-group">
     <button class="pill-btn" id="editBtn">✎ Messages</button>
-    <button class="pill-btn" id="soundBtn">🔊 Son</button>
-    <button class="pill-btn" id="fullscreenBtn">⛶ Plein écran</button>
+    <button class="pill-btn" id="soundBtn">🔊 Sound</button>
+    <button class="pill-btn" id="fullscreenBtn">⛶ Full screen</button>
   </div>
 </div>
 
@@ -167,7 +167,7 @@ document.getElementById("soundBtn").addEventListener("click", (e) => {
 });
 
 /* ============ MESSAGES (personnalisables, sauvegardées) ============ */
-let MSGS = ["I love you Aruna❤️", "Forever yours♾️", "Only both of us😌🤞", "I think about you", "My Man👑 ,my Love💌", "🚹You+Me🚺+God✝️=Perfect ♾️ Forever❤️"];
+let MSGS = ["I love you Aruna❤️", "Forever yours♾️", "Only both of us😌🤞", "I think about you", "My Man👑 my Love💌", "You+Me+God✝️=Perfect♾️Forever❤️"];
 try {
   const saved = localStorage.getItem("heartMessages");
   if (saved) { const arr = JSON.parse(saved); if (Array.isArray(arr) && arr.length) MSGS = arr; }
@@ -460,11 +460,11 @@ fullscreenBtn.addEventListener("click", async (e) => {
   e.stopPropagation();
   try {
     if (!document.fullscreenElement){ await document.documentElement.requestFullscreen(); fullscreenBtn.textContent = "✕ Quitter"; }
-    else { await document.exitFullscreen(); fullscreenBtn.textContent = "⛶ Plein écran"; }
+    else { await document.exitFullscreen(); fullscreenBtn.textContent = "⛶ Full Screen"; }
   } catch(err){}
 });
 document.addEventListener("fullscreenchange", () => {
-  fullscreenBtn.textContent = document.fullscreenElement ? "✕ Quitter" : "⛶ Plein écran";
+  fullscreenBtn.textContent = document.fullscreenElement ? "✕ Quitter" : "⛶ Full Screen";
 });
 
 requestAnimationFrame(loop);
