@@ -1,105 +1,82 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport"
-      content="width=device-width, initial-scale=1.0,
-               maximum-scale=1.0, user-scalable=no">
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Heart Messages 💌</title>
 
 <style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+* { margin:0; padding:0; box-sizing:border-box; }
+
+:root{
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-html,
-body {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: #03030a;
+html, body {
+  width:100%; height:100%;
+  overflow:hidden;
+  background:#03030a;
   font-family: Georgia, "Times New Roman", serif;
-  cursor: pointer;
-  touch-action: none;
-  user-select: none;
+  cursor:pointer;
+  touch-action:none;
+  user-select:none;
 }
 
-canvas {
-  position: fixed;
-  inset: 0;
-  display: block;
-  width: 100vw;
-  height: 100vh;
-}
+canvas { position:fixed; inset:0; display:block; width:100vw; height:100vh; }
 
-/* Help message */
 .hint {
-  position: fixed;
-  bottom: 7%;
-  left: 0;
-  width: 100%;
-  text-align: center;
+  position:fixed;
+  bottom: calc(7% + env(safe-area-inset-bottom, 0px));
+  left:0; width:100%; text-align:center;
+  color:rgba(255,255,255,0.6);
+  font-style:italic; letter-spacing:2px; font-size:15px;
+  pointer-events:none;
+  animation:pulse 2.6s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:.3;} 50%{opacity:.9;} }
 
-  color: rgba(255, 255, 255, 0.6);
-  font-style: italic;
-  letter-spacing: 2px;
-  font-size: 15px;
+.topbar{
+  position:fixed;
+  top: calc(20px + env(safe-area-inset-top, 0px));
+  left:0; right:0;
+  display:flex; justify-content:space-between; align-items:flex-start;
+  padding:0 20px;
+  z-index:20;
+  pointer-events:none;
+}
+.topbar > * { pointer-events:auto; }
 
-  pointer-events: none;
+.pill-btn{
+  border:1px solid rgba(255,255,255,0.25);
+  border-radius:30px;
+  padding:10px 16px;
+  background:rgba(10,10,30,0.65);
+  backdrop-filter:blur(8px);
+  color:white;
+  font-size:14px;
+  font-family: Georgia, serif;
+  cursor:pointer;
+  transition:.3s;
+}
+.pill-btn:hover{ background:rgba(255,120,170,0.25); transform:scale(1.05); }
 
-  animation: pulse 2.6s ease-in-out infinite;
+.counter{
+  border:1px solid rgba(255,255,255,0.2);
+  border-radius:30px;
+  padding:10px 16px;
+  background:rgba(10,10,30,0.5);
+  backdrop-filter:blur(8px);
+  color:#ffc2dc;
+  font-size:14px;
+  letter-spacing:1px;
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.9; }
-}
+.btn-group{ display:flex; gap:8px; }
 
-/* Fullscreen button */
-.fullscreen-btn {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 20;
-
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 30px;
-
-  padding: 10px 16px;
-
-  background: rgba(10, 10, 30, 0.65);
-  backdrop-filter: blur(8px);
-
-  color: white;
-  font-size: 14px;
-
-  cursor: pointer;
-
-  transition: 0.3s;
-}
-
-.fullscreen-btn:hover {
-  background: rgba(255, 120, 170, 0.25);
-  transform: scale(1.05);
-}
-
-/* Mobile adaptation */
-@media (max-width: 600px) {
-  .hint {
-    font-size: 12px;
-    letter-spacing: 1px;
-    bottom: 6%;
-  }
-
-  .fullscreen-btn {
-    top: 12px;
-    right: 12px;
-    padding: 8px 12px;
-    font-size: 12px;
-  }
+@media (max-width:600px){
+  .hint{ font-size:12px; letter-spacing:1px; bottom:calc(6% + env(safe-area-inset-bottom,0px)); }
+  .pill-btn, .counter{ padding:8px 12px; font-size:12px; }
 }
 </style>
 </head>
@@ -108,542 +85,365 @@ canvas {
 
 <canvas id="cv"></canvas>
 
-<div class="hint">
-  Touch anywhere to send a heart ❤️
+<div class="hint">Touche l'écran pour envoyer un cœur — maintiens appuyé pour un cœur géant ❤️</div>
+
+<div class="topbar">
+  <div class="counter" id="counter">💕 0</div>
+  <div class="btn-group">
+    <button class="pill-btn" id="editBtn">✎ Messages</button>
+    <button class="pill-btn" id="soundBtn">🔊 Son</button>
+    <button class="pill-btn" id="fullscreenBtn">⛶ Plein écran</button>
+  </div>
 </div>
 
-<button class="fullscreen-btn" id="fullscreenBtn">
-  ⛶ Fullscreen
-</button>
-
 <script>
-
 const cv = document.getElementById("cv");
 const ctx = cv.getContext("2d");
-
 const TAU = Math.PI * 2;
-const rand = (a, b) => a + Math.random() * (b - a);
+const rand = (a,b) => a + Math.random() * (b - a);
 
-let W = window.innerWidth;
-let H = window.innerHeight;
+let W = window.innerWidth, H = window.innerHeight;
 
-/* =========================================================
-   RESIZING
-========================================================= */
-function resize() {
-  W = window.innerWidth;
-  H = window.innerHeight;
-  cv.width = W;
-  cv.height = H;
-  initField();
-}
+function resize(){ W = window.innerWidth; H = window.innerHeight; cv.width = W; cv.height = H; initField(); }
 window.addEventListener("resize", resize);
 
-/* =========================================================
-   STARS + AMBIENT PARTICLES
-========================================================= */
-let stars = [];
-let ambient = [];
-
-function initField() {
-  stars = Array.from({ length: 170 }, () => ({
-    x: rand(0, W),
-    y: rand(0, H),
-    r: rand(0.4, 1.5),
-    p: rand(0, TAU),
-    s: rand(0.6, 2.2)
-  }));
-
-  ambient = Array.from({ length: 45 }, () => ({
-    x: rand(0, W),
-    y: rand(0, H),
-    r: rand(1, 3),
-    vx: rand(-0.15, 0.15),
-    vy: rand(-0.3, -0.05),
-    p: rand(0, TAU),
-    c: ["#6aa8ff", "#b48cff", "#ff9ecb", "#8fd0ff"][Math.floor(rand(0, 4))]
+/* ============ STARS + AMBIENT ============ */
+let stars = [], ambient = [];
+function initField(){
+  stars = Array.from({length:170}, () => ({ x:rand(0,W), y:rand(0,H), r:rand(.4,1.5), p:rand(0,TAU), s:rand(.6,2.2) }));
+  ambient = Array.from({length:45}, () => ({
+    x:rand(0,W), y:rand(0,H), r:rand(1,3),
+    vx:rand(-.15,.15), vy:rand(-.3,-.05), p:rand(0,TAU),
+    c:["#6aa8ff","#b48cff","#ff9ecb","#8fd0ff"][Math.floor(rand(0,4))]
   }));
 }
 initField();
 
-/* =========================================================
-   COLLECTIONS
-========================================================= */
-const bursts = [];
-const floaters = [];
-const boomHearts = [];
-const arrows = [];
-const messages = [];
+/* ============ THEME COLORS (cycle each burst) ============ */
+const PALETTES = [
+  ["#7fb2ff","#c39bff","#ffffff","#ffb3d9","#9fd8ff"],
+  ["#ffd166","#ff8fa3","#ffffff","#caffbf","#9bf6ff"],
+  ["#ff70a6","#ff9770","#ffffff","#a0c4ff","#bdb2ff"]
+];
+let paletteIdx = 0;
 
-/* =========================================================
-   HEART
-========================================================= */
-function heartPath(c, s) {
+/* ============ COLLECTIONS ============ */
+const bursts = [], floaters = [], boomHearts = [], arrows = [], messages = [], queue = [];
+
+/* ============ HEART SHAPE ============ */
+function heartPath(c,s){
   c.beginPath();
-  c.moveTo(0, s * 0.32);
-  c.bezierCurveTo(s * 0.55, -s * 0.4, s * 1.15, s * 0.12, 0, s);
-  c.bezierCurveTo(-s * 1.15, s * 0.12, -s * 0.55, -s * 0.4, 0, s * 0.32);
+  c.moveTo(0, s*0.32);
+  c.bezierCurveTo(s*0.55, -s*0.4, s*1.15, s*0.12, 0, s);
+  c.bezierCurveTo(-s*1.15, s*0.12, -s*0.55, -s*0.4, 0, s*0.32);
   c.closePath();
 }
 
-/* =========================================================
-   EXPLOSION
-========================================================= */
-function burst(x, y, n = 70) {
-  for (let i = 0; i < n; i++) {
-    const a = rand(0, TAU);
-    const sp = rand(1, 5.5);
+/* ============ SOUND (Web Audio, synthesized, no assets) ============ */
+let soundOn = true;
+let actx = null;
+function ensureAudio(){ if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} } }
+function popSound(big){
+  if (!soundOn || !actx) return;
+  const t0 = actx.currentTime;
+  const osc = actx.createOscillator();
+  const gain = actx.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(big ? 220 : 520, t0);
+  osc.frequency.exponentialRampToValueAtTime(big ? 660 : 900, t0 + 0.12);
+  gain.gain.setValueAtTime(0.0001, t0);
+  gain.gain.exponentialRampToValueAtTime(big ? 0.25 : 0.14, t0 + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + (big ? 0.5 : 0.28));
+  osc.connect(gain); gain.connect(actx.destination);
+  osc.start(t0);
+  osc.stop(t0 + (big ? 0.55 : 0.32));
+}
 
+document.getElementById("soundBtn").addEventListener("click", (e) => {
+  e.stopPropagation();
+  ensureAudio();
+  soundOn = !soundOn;
+  document.getElementById("soundBtn").textContent = soundOn ? "🔊 Song" : "🔇 Silence";
+});
+
+/* ============ MESSAGES (personnalisables, sauvegardées) ============ */
+let MSGS = ["I love you Aruna❤️", "Forever yours♾️", "Only both of us😌🤞", "I think about you", "My Man👑 ,my Love💌", "🚹You+Me🚺+God✝️=Perfect ♾️ Forever❤️"];
+try {
+  const saved = localStorage.getItem("heartMessages");
+  if (saved) { const arr = JSON.parse(saved); if (Array.isArray(arr) && arr.length) MSGS = arr; }
+} catch(e) {}
+
+let mi = 0;
+const MESSAGE_DELAY_MS = 550; // plus rapide qu'avant
+
+document.getElementById("editBtn").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const current = MSGS.join(", ");
+  const input = window.prompt("Modifie les messages (séparés par des virgules) :", current);
+  if (input && input.trim()) {
+    const list = input.split(",").map(s => s.trim()).filter(Boolean);
+    if (list.length) {
+      MSGS = list;
+      try { localStorage.setItem("heartMessages", JSON.stringify(MSGS)); } catch(e) {}
+    }
+  }
+});
+
+function spawnMessageNow(x, y, big){
+  const clampedX = Math.min(Math.max(x, 90), W - 90);
+  const clampedY = Math.min(Math.max(y - 70, 60), H - 40);
+  messages.push({ text: MSGS[mi % MSGS.length], t:0, dur: big ? 130 : 100, x: clampedX, y: clampedY, big });
+  mi++;
+}
+function scheduleMessage(x, y, big){ queue.push({ x, y, big, tMs:0, dur: MESSAGE_DELAY_MS }); }
+
+/* ============ COUNTER ============ */
+let heartsSent = 0;
+const counterEl = document.getElementById("counter");
+function bumpCounter(){ heartsSent++; counterEl.textContent = "💕 " + heartsSent; }
+
+/* ============ EXPLOSION ============ */
+function burst(x, y, n, palette){
+  for (let i=0;i<n;i++){
+    const a = rand(0,TAU), sp = rand(1.4, 7); // plus rapide
     bursts.push({
-      x, y,
-      vx: Math.cos(a) * sp,
-      vy: Math.sin(a) * sp,
-      life: 1,
-      decay: rand(0.008, 0.018),
-      r: rand(1, 2.8),
-      c: ["#7fb2ff", "#c39bff", "#ffffff", "#ffb3d9", "#9fd8ff"][Math.floor(rand(0, 5))],
-      heart: Math.random() < 0.3,
-      s: rand(3, 7)
+      x,y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
+      life:1, decay:rand(.012,.024), r:rand(1,2.8),
+      c: palette[Math.floor(rand(0,palette.length))],
+      heart: Math.random() < .3, s: rand(3,7)
     });
   }
 }
 
-/* =========================================================
-   MESSAGES (désormais déclenchés par clic)
-========================================================= */
-const MSGS = [
-  "I Love You Aruna❤️",
-  "Forever Yours",
-  "Just both of us🤞",
-  "I Dreamed About You",
-  "My Love",
-  "You're My Everything"
-];
+function explode(x, y, big){
+  const palette = PALETTES[paletteIdx % PALETTES.length];
+  paletteIdx++;
+  boomHearts.push({ x, y, t:0, big });
+  burst(x, y, big ? 110 : 70, palette);
 
-let mi = 0;
+  for (let i=0;i<(big?40:24);i++){
+    const a = rand(0,TAU), sp = rand(1.2, 5.5);
+    bursts.push({
+      x,y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp - 1,
+      life:1, decay:rand(.014,.026), r:2,
+      c:"#ff7fa8", heart:true, s:rand(4, big?12:9)
+    });
+  }
+  for (let i=0;i<(big?12:6);i++){
+    floaters.push({ x:x+rand(-24,24), y:y-10, vy:rand(-1.6,-.8), t:0, s:rand(6, big?15:11) });
+  }
 
-// File d'attente: après un clic, on affiche un message au bout de quelques secondes
-const queue = [];
-const MESSAGE_DELAY_MS = 1800; // <-- ajuste le délai (ex: 1500-3000)
-
-function getMessageY() {
-  return H * 0.28;
+  popSound(big);
+  if (navigator.vibrate) navigator.vibrate(big ? [30,20,40] : 20);
 }
 
-function spawnMessageNow() {
-  const y = getMessageY();
-
-  messages.push({
-    text: MSGS[mi % MSGS.length],
-    t: 0,
-    dur: 220,
-    y: y
-  });
-
-  mi++;
-}
-
-function scheduleMessage() {
-  queue.push({ t: 0, dur: MESSAGE_DELAY_MS });
-}
-
-/*
-  Si l'on clique plusieurs fois, on garde chaque message en file.
-*/
-
-/* =========================================================
-   BOW
-========================================================= */
-const bow = () => ({
-  x: Math.max(60, W * 0.08),
-  y: H * 0.35
-});
-
+/* ============ BOW ============ */
+const bow = () => ({ x: Math.max(60, W*0.08), y: H*0.35 });
 let aim = 0;
 
-/* =========================================================
-   MAIN INPUT
-   - on détecte clic/touch n'importe où (sauf fullscreen)
-   - on fait apparaître des coeurs tout de suite
-   - puis quelques secondes après, un message
-========================================================= */
+/* ============ INPUT (tap vs hold = mega heart) ============ */
+let pressStart = 0, pressX = 0, pressY = 0, pressing = false;
+const HOLD_THRESHOLD = 380;
 
 window.addEventListener("pointermove", (e) => {
   const b = bow();
   aim = Math.atan2(e.clientY - b.y, e.clientX - b.x);
 });
 
+function isUIButton(el){
+  return el && el.closest && el.closest(".topbar");
+}
+
 window.addEventListener("pointerdown", (e) => {
-  if (e.target && e.target.id === "fullscreenBtn") return;
+  if (isUIButton(e.target)) return;
+  ensureAudio();
+  pressing = true;
+  pressStart = performance.now();
+  pressX = e.clientX; pressY = e.clientY;
+});
 
-  const x = e.clientX;
-  const y = e.clientY;
+window.addEventListener("pointerup", (e) => {
+  if (!pressing || isUIButton(e.target)) { pressing = false; return; }
+  pressing = false;
+  const held = performance.now() - pressStart;
+  const big = held >= HOLD_THRESHOLD;
+  const x = pressX, y = pressY;
 
-  // 1) Coeurs tout de suite au point touché
-  explode(x, y);
+  explode(x, y, big);
+  scheduleMessage(x, y, big);
+  bumpCounter();
 
-  // 2) Message dans quelques secondes
-  scheduleMessage();
-
-  // 3) Option: garder aussi l'animation flèche existante
-  //    (si tu veux uniquement les coeurs sans flèche, supprime tout le bloc "arrows.push")
   const b = bow();
-  const dist = Math.hypot(x - b.x, y - b.y) || 1;
-
+  const dist = Math.hypot(x-b.x, y-b.y) || 1;
   arrows.push({
-    x0: b.x,
-    y0: b.y,
-    x1: x,
-    y1: y,
-    t: 0,
-    dur: Math.min(Math.max(dist / 15, 18), 50),
-    ang: Math.atan2(y - b.y, x - b.x)
+    x0:b.x, y0:b.y, x1:x, y1:y, t:0,
+    dur: Math.min(Math.max(dist/22, 10), 32), // plus rapide
+    ang: Math.atan2(y-b.y, x-b.x)
   });
 });
 
-/* =========================================================
-   HEART EXPLOSION
-========================================================= */
-function explode(x, y) {
-  boomHearts.push({ x, y, t: 0 });
-  burst(x, y, 60);
-
-  // Mini hearts
-  for (let i = 0; i < 26; i++) {
-    const a = rand(0, TAU);
-    const sp = rand(1, 4);
-
-    bursts.push({
-      x, y,
-      vx: Math.cos(a) * sp,
-      vy: Math.sin(a) * sp - 1,
-      life: 1,
-      decay: rand(0.01, 0.02),
-      r: 2,
-      c: "#ff7fa8",
-      heart: true,
-      s: rand(4, 9)
-    });
-  }
-
-  // Floating hearts
-  for (let i = 0; i < 6; i++) {
-    floaters.push({
-      x: x + rand(-20, 20),
-      y: y - 10,
-      vy: rand(-1.2, -0.6),
-      t: 0,
-      s: rand(6, 11)
-    });
-  }
-}
-
-/* =========================================================
-   MAIN LOOP
-========================================================= */
+/* ============ MAIN LOOP ============ */
 let last = performance.now();
 
-function loop(now) {
-  const dt = Math.min((now - last) / 16.667, 3);
+function loop(now){
+  const dt = Math.min((now-last)/16.667, 3) * 1.25; // vitesse générale augmentée
   last = now;
 
-  /* BACKGROUND */
-  const bg = ctx.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, "#0a0a1c");
-  bg.addColorStop(0.5, "#060612");
-  bg.addColorStop(1, "#03030a");
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, W, H);
+  const bg = ctx.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0,"#0a0a1c"); bg.addColorStop(.5,"#060612"); bg.addColorStop(1,"#03030a");
+  ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
 
-  /* STARS */
-  for (const s of stars) {
-    ctx.globalAlpha =
-      (0.25 + 0.75 * Math.abs(Math.sin(now * 0.001 * s.s + s.p))) * 0.8;
+  for (const s of stars){
+    ctx.globalAlpha = (0.25 + 0.75*Math.abs(Math.sin(now*0.001*s.s+s.p)))*0.8;
     ctx.fillStyle = "#cfe0ff";
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, s.r, 0, TAU);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,TAU); ctx.fill();
   }
   ctx.globalAlpha = 1;
 
-  /* AMBIENT PARTICLES */
   ctx.globalCompositeOperation = "lighter";
-  for (const p of ambient) {
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
-
-    if (p.y < -10) { p.y = H + 10; p.x = rand(0, W); }
-    if (p.x < -10) p.x = W + 10;
-    if (p.x > W + 10) p.x = -10;
-
-    ctx.globalAlpha = 0.25 + 0.45 * (0.5 + 0.5 * Math.sin(now * 0.002 + p.p));
-    ctx.shadowColor = p.c;
-    ctx.shadowBlur = 9;
-    ctx.fillStyle = p.c;
-
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r, 0, TAU);
-    ctx.fill();
+  for (const p of ambient){
+    p.x += p.vx*dt; p.y += p.vy*dt;
+    if (p.y < -10){ p.y = H+10; p.x = rand(0,W); }
+    if (p.x < -10) p.x = W+10;
+    if (p.x > W+10) p.x = -10;
+    ctx.globalAlpha = 0.25 + 0.45*(0.5+0.5*Math.sin(now*0.002+p.p));
+    ctx.shadowColor = p.c; ctx.shadowBlur = 9; ctx.fillStyle = p.c;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,TAU); ctx.fill();
   }
   ctx.globalCompositeOperation = "source-over";
   ctx.globalAlpha = 1;
 
-  /* UPDATE MESSAGE QUEUE */
-  // quand l'attente est finie -> spawn message
-  for (let i = queue.length - 1; i >= 0; i--) {
+  /* Message queue */
+  for (let i=queue.length-1;i>=0;i--){
     const q = queue[i];
-    q.t += (now - last) * 0.0; // (inutile) on utilise maintenant ci-dessous via dt converti
-  }
-  // Astuce simple: on gère la queue avec dt “frames” (approx)
-  // On ne modifie pas dt pour éviter des erreurs, donc on convertit MESSAGE_DELAY_MS via un compteur en “frames”
-  // On fait mieux: on stocke plutôt un compteur en secondes.
-  // => Pour garder le code simple, on va gérer autrement: on met à jour juste après,
-  // via un compteur "q.tMs" stocké.
-
-  // (On initialisera q.tMs si nécessaire)
-  for (let i = queue.length - 1; i >= 0; i--) {
-    const q = queue[i];
-    if (q.tMs === undefined) q.tMs = 0;
-    q.tMs += dt * 16.667; // approximativement en ms
-    if (q.tMs >= q.dur) {
-      spawnMessageNow();
-      queue.splice(i, 1);
-    }
+    q.tMs += dt * 16.667;
+    if (q.tMs >= q.dur){ spawnMessageNow(q.x, q.y, q.big); queue.splice(i,1); }
   }
 
-  /* ARROWS */
-  for (let i = arrows.length - 1; i >= 0; i--) {
+  /* Arrows */
+  for (let i=arrows.length-1;i>=0;i--){
     const a = arrows[i];
     a.t += dt;
+    const k = Math.min(a.t/a.dur, 1);
+    const x = a.x0 + (a.x1-a.x0)*k;
+    const y = a.y0 + (a.y1-a.y0)*k;
 
-    const k = Math.min(a.t / a.dur, 1);
-    const x = a.x0 + (a.x1 - a.x0) * k;
-    const y = a.y0 + (a.y1 - a.y0) * k;
+    bursts.push({ x,y, vx:rand(-.3,.3), vy:rand(-.3,.3), life:.6, decay:.05, r:1.2, c:"#ffd9e8", heart:false, s:3 });
 
-    // Trail
-    bursts.push({
-      x, y,
-      vx: rand(-0.3, 0.3),
-      vy: rand(-0.3, 0.3),
-      life: 0.6,
-      decay: 0.04,
-      r: 1.2,
-      c: "#ffd9e8",
-      heart: false,
-      s: 3
-    });
-
-    if (k >= 1) {
-      explode(a.x1, a.y1);
-      arrows.splice(i, 1);
-      continue;
-    }
+    if (k >= 1){ arrows.splice(i,1); continue; }
 
     ctx.save();
-    ctx.translate(x, y);
+    ctx.translate(x,y);
     ctx.rotate(a.ang);
-
-    /* Arrow shaft */
-    ctx.strokeStyle = "rgba(235,238,250,.95)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-26, 0);
-    ctx.lineTo(14, 0);
-    ctx.stroke();
-
-    /* Heart tip */
-    ctx.fillStyle = "#ff8fb0";
-    heartPath(ctx, 7);
-    ctx.fill();
-
-    /* Fletching */
-    ctx.strokeStyle = "rgba(200,210,235,.8)";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(-26, 0);
-    ctx.lineTo(-33, -5);
-    ctx.moveTo(-26, 0);
-    ctx.lineTo(-33, 5);
-    ctx.stroke();
-
+    ctx.strokeStyle = "rgba(235,238,250,.95)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-26,0); ctx.lineTo(14,0); ctx.stroke();
+    ctx.fillStyle = "#ff8fb0"; heartPath(ctx,7); ctx.fill();
+    ctx.strokeStyle = "rgba(200,210,235,.8)"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(-26,0); ctx.lineTo(-33,-5); ctx.moveTo(-26,0); ctx.lineTo(-33,5); ctx.stroke();
     ctx.restore();
   }
 
-  /* EXPLOSIONS (bursts) */
+  /* Burst particles */
   ctx.globalCompositeOperation = "lighter";
-  for (let i = bursts.length - 1; i >= 0; i--) {
+  for (let i=bursts.length-1;i>=0;i--){
     const p = bursts[i];
-
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
-
-    p.vx *= Math.pow(0.96, dt);
-    p.vy *= Math.pow(0.96, dt);
-
-    p.vy += 0.015 * dt;
-    p.life -= p.decay * dt;
-
-    if (p.life <= 0) {
-      bursts.splice(i, 1);
-      continue;
-    }
-
-    ctx.globalAlpha = Math.max(0, p.life);
-    ctx.shadowColor = p.c;
-    ctx.shadowBlur = 10;
-    ctx.fillStyle = p.c;
-
-    if (p.heart) {
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      heartPath(ctx, p.s * (0.5 + p.life * 0.5));
-      ctx.fill();
-      ctx.restore();
+    p.x += p.vx*dt; p.y += p.vy*dt;
+    p.vx *= Math.pow(0.96, dt); p.vy *= Math.pow(0.96, dt);
+    p.vy += 0.015*dt;
+    p.life -= p.decay*dt;
+    if (p.life <= 0){ bursts.splice(i,1); continue; }
+    ctx.globalAlpha = Math.max(0,p.life);
+    ctx.shadowColor = p.c; ctx.shadowBlur = 10; ctx.fillStyle = p.c;
+    if (p.heart){
+      ctx.save(); ctx.translate(p.x,p.y);
+      heartPath(ctx, p.s*(0.5+p.life*0.5)); ctx.fill(); ctx.restore();
     } else {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r * p.life, 0, TAU);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r*p.life,0,TAU); ctx.fill();
     }
   }
   ctx.globalCompositeOperation = "source-over";
   ctx.globalAlpha = 1;
 
-  /* FLOATING HEARTS */
-  for (let i = floaters.length - 1; i >= 0; i--) {
+  /* Floating hearts */
+  for (let i=floaters.length-1;i>=0;i--){
     const f = floaters[i];
-    f.t += dt;
-    f.y += f.vy * dt;
-
-    if (f.t > 132) {
-      floaters.splice(i, 1);
-      continue;
-    }
-
-    ctx.save();
-    ctx.translate(f.x, f.y);
-
-    ctx.globalAlpha =
-      f.t < 24 ? f.t / 24 : Math.max(0, 1 - (f.t - 24) / 108);
-
-    ctx.shadowColor = "rgba(255,130,175,.8)";
-    ctx.shadowBlur = 8;
-    ctx.fillStyle = "#ff8fb0";
-
-    heartPath(ctx, f.s);
-    ctx.fill();
-    ctx.restore();
+    f.t += dt; f.y += f.vy*dt;
+    if (f.t > 100){ floaters.splice(i,1); continue; }
+    ctx.save(); ctx.translate(f.x,f.y);
+    ctx.globalAlpha = f.t < 18 ? f.t/18 : Math.max(0, 1-(f.t-18)/82);
+    ctx.shadowColor = "rgba(255,130,175,.8)"; ctx.shadowBlur = 8; ctx.fillStyle = "#ff8fb0";
+    heartPath(ctx, f.s); ctx.fill(); ctx.restore();
   }
 
-  /* LARGE EXPLOSION HEART */
-  for (let i = boomHearts.length - 1; i >= 0; i--) {
+  /* Large explosion heart */
+  for (let i=boomHearts.length-1;i>=0;i--){
     const h = boomHearts[i];
     h.t += dt;
+    const T = h.big ? 78 : 62;
+    if (h.t >= T){ boomHearts.splice(i,1); continue; }
+    let sc = 1, alpha = 1;
+    const growEnd = h.big ? 16 : 14;
+    if (h.t < growEnd){ sc = 1 - Math.pow(1 - h.t/growEnd, 3); }
+    else { alpha = Math.max(0, 1 - (h.t-growEnd)/(T-growEnd)); }
+    const s = (h.big ? 85 : 55) * sc;
+    ctx.save(); ctx.translate(h.x,h.y); ctx.globalAlpha = alpha;
+    ctx.shadowColor = "rgba(255,120,170,.9)"; ctx.shadowBlur = h.big ? 45 : 30;
+    const g = ctx.createLinearGradient(0,-s,0,s);
+    g.addColorStop(0, h.big ? "#ffd166" : "#ff9dbb");
+    g.addColorStop(1, h.big ? "#ff5f92" : "#ff5f92");
+    ctx.fillStyle = g; heartPath(ctx, s); ctx.fill(); ctx.restore();
+  }
 
-    const T = 96;
-    if (h.t >= T) {
-      boomHearts.splice(i, 1);
-      continue;
-    }
+  /* Bow */
+  const b = bow();
+  ctx.save(); ctx.translate(b.x,b.y); ctx.rotate(aim); ctx.lineCap = "round";
+  ctx.strokeStyle = "rgba(215,222,240,.9)"; ctx.lineWidth = 3.5;
+  ctx.beginPath(); ctx.arc(0,0,44,-1.15,1.15); ctx.stroke();
+  const tx = Math.cos(1.15)*44, ty = Math.sin(1.15)*44;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(tx,-ty); ctx.quadraticCurveTo(-6,0,tx,ty); ctx.stroke();
+  ctx.strokeStyle = "rgba(235,238,250,.9)"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(-4,0); ctx.lineTo(52,0); ctx.stroke();
+  ctx.fillStyle = "#ff8fb0"; heartPath(ctx,6.5); ctx.fill();
 
-    let sc = 1;
-    let alpha = 1;
-
-    if (h.t < 21) {
-      sc = 1 - Math.pow(1 - h.t / 21, 3);
-    } else {
-      alpha = Math.max(0, 1 - (h.t - 21) / (T - 21));
-    }
-
-    const s = 55 * sc;
-
+  /* Charge indicator while holding */
+  if (pressing){
+    const held = performance.now() - pressStart;
+    const p = Math.min(held / HOLD_THRESHOLD, 1);
+    ctx.restore();
     ctx.save();
-    ctx.translate(h.x, h.y);
-    ctx.globalAlpha = alpha;
-
-    ctx.shadowColor = "rgba(255,120,170,.9)";
-    ctx.shadowBlur = 30;
-
-    const g = ctx.createLinearGradient(0, -s, 0, s);
-    g.addColorStop(0, "#ff9dbb");
-    g.addColorStop(1, "#ff5f92");
-
-    ctx.fillStyle = g;
-    heartPath(ctx, s);
-    ctx.fill();
+    ctx.translate(pressX, pressY);
+    ctx.strokeStyle = `rgba(255,180,210,${0.3+0.5*p})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, 0, 24 + p*10, -Math.PI/2, -Math.PI/2 + TAU*p);
+    ctx.stroke();
+    ctx.restore();
+  } else {
     ctx.restore();
   }
 
-  /* BOW */
-  const b = bow();
+  /* Messages — at the heart's location, one at a time, each different */
   ctx.save();
-  ctx.translate(b.x, b.y);
-  ctx.rotate(aim);
-  ctx.lineCap = "round";
-
-  /* Limbs */
-  ctx.strokeStyle = "rgba(215,222,240,.9)";
-  ctx.lineWidth = 3.5;
-  ctx.beginPath();
-  ctx.arc(0, 0, 44, -1.15, 1.15);
-  ctx.stroke();
-
-  /* String */
-  const tx = Math.cos(1.15) * 44;
-  const ty = Math.sin(1.15) * 44;
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.moveTo(tx, -ty);
-  ctx.quadraticCurveTo(-6, 0, tx, ty);
-  ctx.stroke();
-
-  /* Arrow (static bow arrow) */
-  ctx.strokeStyle = "rgba(235,238,250,.9)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(-4, 0);
-  ctx.lineTo(52, 0);
-  ctx.stroke();
-
-  ctx.fillStyle = "#ff8fb0";
-  heartPath(ctx, 6.5);
-  ctx.fill();
-
-  ctx.restore();
-
-  /* MESSAGES drawn last */
-  ctx.save();
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-
-  const fontSize = Math.min(Math.max(W * 0.075, 24), 44);
-  ctx.font = `italic ${fontSize}px Georgia, serif`;
-
-  for (let i = messages.length - 1; i >= 0; i--) {
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (let i=messages.length-1;i>=0;i--){
     const m = messages[i];
     m.t += dt;
-
-    if (m.t >= m.dur) {
-      messages.splice(i, 1);
-      continue;
-    }
+    if (m.t >= m.dur){ messages.splice(i,1); continue; }
 
     let alpha = 1;
-    if (m.t < 42) {
-      alpha = m.t / 42;
-    } else if (m.t > m.dur - 66) {
-      alpha = (m.dur - m.t) / 66;
-    }
+    if (m.t < 20) alpha = m.t/20;
+    else if (m.t > m.dur - 30) alpha = (m.dur-m.t)/30;
 
-    const sc = 0.92 + 0.08 * Math.min(1, m.t / 30);
+    const sc = 0.85 + 0.15*Math.min(1, m.t/16);
+    const fontSize = (m.big ? 1.15 : 1) * Math.min(Math.max(W*0.062, 20), 38);
+    ctx.font = `italic ${fontSize}px Georgia, serif`;
 
     ctx.save();
-    ctx.translate(W / 2, m.y);
+    ctx.translate(m.x, m.y - m.t*0.25); // dérive légèrement vers le haut
     ctx.scale(sc, sc);
     ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-
-    ctx.shadowColor = "rgba(255,150,190,0.95)";
-    ctx.shadowBlur = 25;
-
+    ctx.shadowColor = "rgba(255,150,190,0.95)"; ctx.shadowBlur = 25;
     ctx.fillStyle = "#ffffff";
     ctx.fillText(m.text, 0, 0);
     ctx.restore();
@@ -654,40 +454,21 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 
-/* =========================================================
-   FULLSCREEN
-========================================================= */
+/* ============ FULLSCREEN ============ */
 const fullscreenBtn = document.getElementById("fullscreenBtn");
 fullscreenBtn.addEventListener("click", async (e) => {
   e.stopPropagation();
   try {
-    if (!document.fullscreenElement) {
-      await document.documentElement.requestFullscreen();
-      fullscreenBtn.textContent = "✕ Exit";
-    } else {
-      await document.exitFullscreen();
-      fullscreenBtn.textContent = "⛶ Fullscreen";
-    }
-  } catch (error) {
-    console.log("Fullscreen mode unavailable:", error);
-  }
+    if (!document.fullscreenElement){ await document.documentElement.requestFullscreen(); fullscreenBtn.textContent = "✕ Quitter"; }
+    else { await document.exitFullscreen(); fullscreenBtn.textContent = "⛶ Plein écran"; }
+  } catch(err){}
 });
-
 document.addEventListener("fullscreenchange", () => {
-  if (document.fullscreenElement) {
-    fullscreenBtn.textContent = "✕ Exit";
-  } else {
-    fullscreenBtn.textContent = "⛶ Fullscreen";
-  }
+  fullscreenBtn.textContent = document.fullscreenElement ? "✕ Quitter" : "⛶ Plein écran";
 });
 
-/* =========================================================
-   STARTUP
-========================================================= */
 requestAnimationFrame(loop);
-
 </script>
-
 </body>
       </html>
       
