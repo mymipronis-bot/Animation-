@@ -54,13 +54,8 @@ canvas {
 }
 
 @keyframes pulse {
-  0%, 100% {
-    opacity: 0.3;
-  }
-
-  50% {
-    opacity: 0.9;
-  }
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.9; }
 }
 
 /* Fullscreen button */
@@ -68,7 +63,6 @@ canvas {
   position: fixed;
   top: 20px;
   right: 20px;
-
   z-index: 20;
 
   border: 1px solid rgba(255, 255, 255, 0.25);
@@ -94,7 +88,6 @@ canvas {
 
 /* Mobile adaptation */
 @media (max-width: 600px) {
-
   .hint {
     font-size: 12px;
     letter-spacing: 1px;
@@ -129,1324 +122,572 @@ const cv = document.getElementById("cv");
 const ctx = cv.getContext("2d");
 
 const TAU = Math.PI * 2;
-
-const rand = (a, b) =>
-  a + Math.random() * (b - a);
+const rand = (a, b) => a + Math.random() * (b - a);
 
 let W = window.innerWidth;
 let H = window.innerHeight;
 
-
 /* =========================================================
    RESIZING
 ========================================================= */
-
 function resize() {
-
   W = window.innerWidth;
   H = window.innerHeight;
-
   cv.width = W;
   cv.height = H;
-
   initField();
 }
-
 window.addEventListener("resize", resize);
-
 
 /* =========================================================
    STARS + AMBIENT PARTICLES
 ========================================================= */
-
 let stars = [];
 let ambient = [];
 
 function initField() {
+  stars = Array.from({ length: 170 }, () => ({
+    x: rand(0, W),
+    y: rand(0, H),
+    r: rand(0.4, 1.5),
+    p: rand(0, TAU),
+    s: rand(0.6, 2.2)
+  }));
 
-  stars = Array.from(
-    { length: 170 },
-    () => ({
-      x: rand(0, W),
-      y: rand(0, H),
-      r: rand(0.4, 1.5),
-      p: rand(0, TAU),
-      s: rand(0.6, 2.2)
-    })
-  );
-
-  ambient = Array.from(
-    { length: 45 },
-    () => ({
-
-      x: rand(0, W),
-      y: rand(0, H),
-
-      r: rand(1, 3),
-
-      vx: rand(-0.15, 0.15),
-      vy: rand(-0.3, -0.05),
-
-      p: rand(0, TAU),
-
-      c: [
-        "#6aa8ff",
-        "#b48cff",
-        "#ff9ecb",
-        "#8fd0ff"
-      ][Math.floor(rand(0, 4))]
-    })
-  );
+  ambient = Array.from({ length: 45 }, () => ({
+    x: rand(0, W),
+    y: rand(0, H),
+    r: rand(1, 3),
+    vx: rand(-0.15, 0.15),
+    vy: rand(-0.3, -0.05),
+    p: rand(0, TAU),
+    c: ["#6aa8ff", "#b48cff", "#ff9ecb", "#8fd0ff"][Math.floor(rand(0, 4))]
+  }));
 }
-
 initField();
-
 
 /* =========================================================
    COLLECTIONS
 ========================================================= */
-
 const bursts = [];
 const floaters = [];
 const boomHearts = [];
 const arrows = [];
 const messages = [];
 
-
 /* =========================================================
    HEART
 ========================================================= */
-
 function heartPath(c, s) {
-
   c.beginPath();
-
   c.moveTo(0, s * 0.32);
-
-  c.bezierCurveTo(
-    s * 0.55,
-    -s * 0.4,
-    s * 1.15,
-    s * 0.12,
-    0,
-    s
-  );
-
-  c.bezierCurveTo(
-    -s * 1.15,
-    s * 0.12,
-    -s * 0.55,
-    -s * 0.4,
-    0,
-    s * 0.32
-  );
-
+  c.bezierCurveTo(s * 0.55, -s * 0.4, s * 1.15, s * 0.12, 0, s);
+  c.bezierCurveTo(-s * 1.15, s * 0.12, -s * 0.55, -s * 0.4, 0, s * 0.32);
   c.closePath();
 }
-
 
 /* =========================================================
    EXPLOSION
 ========================================================= */
-
 function burst(x, y, n = 70) {
-
   for (let i = 0; i < n; i++) {
-
     const a = rand(0, TAU);
     const sp = rand(1, 5.5);
 
     bursts.push({
-
-      x,
-      y,
-
+      x, y,
       vx: Math.cos(a) * sp,
       vy: Math.sin(a) * sp,
-
       life: 1,
-
       decay: rand(0.008, 0.018),
-
       r: rand(1, 2.8),
-
-      c: [
-        "#7fb2ff",
-        "#c39bff",
-        "#ffffff",
-        "#ffb3d9",
-        "#9fd8ff"
-      ][Math.floor(rand(0, 5))],
-
+      c: ["#7fb2ff", "#c39bff", "#ffffff", "#ffb3d9", "#9fd8ff"][Math.floor(rand(0, 5))],
       heart: Math.random() < 0.3,
-
       s: rand(3, 7)
     });
   }
 }
 
-
 /* =========================================================
-   MESSAGES
+   MESSAGES (désormais déclenchés par clic)
 ========================================================= */
-
 const MSGS = [
-
-  "I Love You Aruna",
-
+  "I Love You Aruna❤️",
   "Forever Yours",
-
-  "Just both of us",
-
+  "Just both of us🤞",
   "I Dreamed About You",
-
   "My Love",
-
   "You're My Everything"
-
 ];
 
 let mi = 0;
 
-
-/*
-   MESSAGE POSITION
-   It is placed higher to prevent
-   it from being hidden by the bow.
-*/
+// File d'attente: après un clic, on affiche un message au bout de quelques secondes
+const queue = [];
+const MESSAGE_DELAY_MS = 1800; // <-- ajuste le délai (ex: 1500-3000)
 
 function getMessageY() {
-
   return H * 0.28;
 }
 
-
-/*
-   CREATE A MESSAGE
-*/
-
-function spawnMessage() {
-
+function spawnMessageNow() {
   const y = getMessageY();
 
   messages.push({
-
     text: MSGS[mi % MSGS.length],
-
     t: 0,
-
     dur: 220,
-
     y: y
-
   });
 
   mi++;
-
-  burst(W / 2, y, 45);
 }
 
+function scheduleMessage() {
+  queue.push({ t: 0, dur: MESSAGE_DELAY_MS });
+}
 
 /*
-   FIRST MESSAGE IMMEDIATELY
+  Si l'on clique plusieurs fois, on garde chaque message en file.
 */
-
-spawnMessage();
-
-
-/*
-   NEW MESSAGE EVERY 2.3 SECONDS
-*/
-
-setInterval(() => {
-
-  spawnMessage();
-
-}, 2300);
-
 
 /* =========================================================
    BOW
 ========================================================= */
-
 const bow = () => ({
-
   x: Math.max(60, W * 0.08),
-
   y: H * 0.35
-
 });
-
 
 let aim = 0;
 
-
 /* =========================================================
-   MOUSE / TOUCH
+   MAIN INPUT
+   - on détecte clic/touch n'importe où (sauf fullscreen)
+   - on fait apparaître des coeurs tout de suite
+   - puis quelques secondes après, un message
 ========================================================= */
 
 window.addEventListener("pointermove", (e) => {
-
   const b = bow();
-
-  aim = Math.atan2(
-    e.clientY - b.y,
-    e.clientX - b.x
-  );
-
+  aim = Math.atan2(e.clientY - b.y, e.clientX - b.x);
 });
-
 
 window.addEventListener("pointerdown", (e) => {
+  if (e.target && e.target.id === "fullscreenBtn") return;
 
-  /*
-     If the fullscreen button is clicked,
-     do not fire an arrow.
-  */
+  const x = e.clientX;
+  const y = e.clientY;
 
-  if (
-    e.target.id === "fullscreenBtn"
-  ) {
-    return;
-  }
+  // 1) Coeurs tout de suite au point touché
+  explode(x, y);
 
+  // 2) Message dans quelques secondes
+  scheduleMessage();
+
+  // 3) Option: garder aussi l'animation flèche existante
+  //    (si tu veux uniquement les coeurs sans flèche, supprime tout le bloc "arrows.push")
   const b = bow();
-
-  const dist = Math.hypot(
-    e.clientX - b.x,
-    e.clientY - b.y
-  ) || 1;
+  const dist = Math.hypot(x - b.x, y - b.y) || 1;
 
   arrows.push({
-
     x0: b.x,
     y0: b.y,
-
-    x1: e.clientX,
-    y1: e.clientY,
-
+    x1: x,
+    y1: y,
     t: 0,
-
-    dur: Math.min(
-      Math.max(dist / 15, 18),
-      50
-    ),
-
-    ang: Math.atan2(
-      e.clientY - b.y,
-      e.clientX - b.x
-    )
-
+    dur: Math.min(Math.max(dist / 15, 18), 50),
+    ang: Math.atan2(y - b.y, x - b.x)
   });
-
 });
-
 
 /* =========================================================
    HEART EXPLOSION
 ========================================================= */
-
 function explode(x, y) {
-
-  boomHearts.push({
-
-    x,
-    y,
-    t: 0
-
-  });
-
+  boomHearts.push({ x, y, t: 0 });
   burst(x, y, 60);
 
-
-  /* Mini hearts */
-
+  // Mini hearts
   for (let i = 0; i < 26; i++) {
-
     const a = rand(0, TAU);
     const sp = rand(1, 4);
 
     bursts.push({
-
-      x,
-      y,
-
+      x, y,
       vx: Math.cos(a) * sp,
-
-      vy:
-        Math.sin(a) * sp - 1,
-
+      vy: Math.sin(a) * sp - 1,
       life: 1,
-
       decay: rand(0.01, 0.02),
-
       r: 2,
-
       c: "#ff7fa8",
-
       heart: true,
-
       s: rand(4, 9)
-
     });
-
   }
 
-
-  /* Floating hearts */
-
+  // Floating hearts
   for (let i = 0; i < 6; i++) {
-
     floaters.push({
-
       x: x + rand(-20, 20),
-
       y: y - 10,
-
       vy: rand(-1.2, -0.6),
-
       t: 0,
-
       s: rand(6, 11)
-
     });
-
   }
-
 }
-
 
 /* =========================================================
    MAIN LOOP
 ========================================================= */
-
 let last = performance.now();
 
-
 function loop(now) {
-
-  const dt =
-    Math.min(
-      (now - last) / 16.667,
-      3
-    );
-
+  const dt = Math.min((now - last) / 16.667, 3);
   last = now;
 
-
-  /* =====================================================
-     BACKGROUND
-  ===================================================== */
-
-  const bg =
-    ctx.createLinearGradient(
-      0,
-      0,
-      0,
-      H
-    );
-
-  bg.addColorStop(
-    0,
-    "#0a0a1c"
-  );
-
-  bg.addColorStop(
-    0.5,
-    "#060612"
-  );
-
-  bg.addColorStop(
-    1,
-    "#03030a"
-  );
-
+  /* BACKGROUND */
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, "#0a0a1c");
+  bg.addColorStop(0.5, "#060612");
+  bg.addColorStop(1, "#03030a");
   ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
 
-  ctx.fillRect(
-    0,
-    0,
-    W,
-    H
-  );
-
-
-  /* =====================================================
-     STARS
-  ===================================================== */
-
+  /* STARS */
   for (const s of stars) {
-
     ctx.globalAlpha =
-      (
-        0.25 +
-        0.75 *
-        Math.abs(
-          Math.sin(
-            now * 0.001 * s.s +
-            s.p
-          )
-        )
-      ) * 0.8;
-
-    ctx.fillStyle =
-      "#cfe0ff";
-
+      (0.25 + 0.75 * Math.abs(Math.sin(now * 0.001 * s.s + s.p))) * 0.8;
+    ctx.fillStyle = "#cfe0ff";
     ctx.beginPath();
-
-    ctx.arc(
-      s.x,
-      s.y,
-      s.r,
-      0,
-      TAU
-    );
-
+    ctx.arc(s.x, s.y, s.r, 0, TAU);
     ctx.fill();
-
   }
-
   ctx.globalAlpha = 1;
 
-
-  /* =====================================================
-     AMBIENT PARTICLES
-  ===================================================== */
-
-  ctx.globalCompositeOperation =
-    "lighter";
-
+  /* AMBIENT PARTICLES */
+  ctx.globalCompositeOperation = "lighter";
   for (const p of ambient) {
-
     p.x += p.vx * dt;
-
     p.y += p.vy * dt;
 
+    if (p.y < -10) { p.y = H + 10; p.x = rand(0, W); }
+    if (p.x < -10) p.x = W + 10;
+    if (p.x > W + 10) p.x = -10;
 
-    if (p.y < -10) {
-
-      p.y = H + 10;
-
-      p.x = rand(0, W);
-
-    }
-
-
-    if (p.x < -10)
-      p.x = W + 10;
-
-    if (p.x > W + 10)
-      p.x = -10;
-
-
-    ctx.globalAlpha =
-      0.25 +
-      0.45 *
-      (
-        0.5 +
-        0.5 *
-        Math.sin(
-          now * 0.002 +
-          p.p
-        )
-      );
-
-
+    ctx.globalAlpha = 0.25 + 0.45 * (0.5 + 0.5 * Math.sin(now * 0.002 + p.p));
     ctx.shadowColor = p.c;
-
     ctx.shadowBlur = 9;
-
     ctx.fillStyle = p.c;
 
-
     ctx.beginPath();
-
-    ctx.arc(
-      p.x,
-      p.y,
-      p.r,
-      0,
-      TAU
-    );
-
+    ctx.arc(p.x, p.y, p.r, 0, TAU);
     ctx.fill();
-
   }
-
-  ctx.globalCompositeOperation =
-    "source-over";
-
+  ctx.globalCompositeOperation = "source-over";
   ctx.globalAlpha = 1;
 
+  /* UPDATE MESSAGE QUEUE */
+  // quand l'attente est finie -> spawn message
+  for (let i = queue.length - 1; i >= 0; i--) {
+    const q = queue[i];
+    q.t += (now - last) * 0.0; // (inutile) on utilise maintenant ci-dessous via dt converti
+  }
+  // Astuce simple: on gère la queue avec dt “frames” (approx)
+  // On ne modifie pas dt pour éviter des erreurs, donc on convertit MESSAGE_DELAY_MS via un compteur en “frames”
+  // On fait mieux: on stocke plutôt un compteur en secondes.
+  // => Pour garder le code simple, on va gérer autrement: on met à jour juste après,
+  // via un compteur "q.tMs" stocké.
 
-  /* =====================================================
-     ARROWS
-  ===================================================== */
+  // (On initialisera q.tMs si nécessaire)
+  for (let i = queue.length - 1; i >= 0; i--) {
+    const q = queue[i];
+    if (q.tMs === undefined) q.tMs = 0;
+    q.tMs += dt * 16.667; // approximativement en ms
+    if (q.tMs >= q.dur) {
+      spawnMessageNow();
+      queue.splice(i, 1);
+    }
+  }
 
-  for (
-    let i = arrows.length - 1;
-    i >= 0;
-    i--
-  ) {
-
+  /* ARROWS */
+  for (let i = arrows.length - 1; i >= 0; i--) {
     const a = arrows[i];
-
     a.t += dt;
 
-    const k =
-      Math.min(
-        a.t / a.dur,
-        1
-      );
+    const k = Math.min(a.t / a.dur, 1);
+    const x = a.x0 + (a.x1 - a.x0) * k;
+    const y = a.y0 + (a.y1 - a.y0) * k;
 
-
-    const x =
-      a.x0 +
-      (a.x1 - a.x0) * k;
-
-    const y =
-      a.y0 +
-      (a.y1 - a.y0) * k;
-
-
-    /* Trail */
-
+    // Trail
     bursts.push({
-
-      x,
-      y,
-
+      x, y,
       vx: rand(-0.3, 0.3),
-
       vy: rand(-0.3, 0.3),
-
       life: 0.6,
-
       decay: 0.04,
-
       r: 1.2,
-
       c: "#ffd9e8",
-
       heart: false,
-
       s: 3
-
     });
 
-
     if (k >= 1) {
-
-      explode(
-        a.x1,
-        a.y1
-      );
-
+      explode(a.x1, a.y1);
       arrows.splice(i, 1);
-
       continue;
-
     }
 
-
     ctx.save();
-
     ctx.translate(x, y);
-
     ctx.rotate(a.ang);
 
-
     /* Arrow shaft */
-
-    ctx.strokeStyle =
-      "rgba(235,238,250,.95)";
-
+    ctx.strokeStyle = "rgba(235,238,250,.95)";
     ctx.lineWidth = 2;
-
     ctx.beginPath();
-
     ctx.moveTo(-26, 0);
-
     ctx.lineTo(14, 0);
-
     ctx.stroke();
-
 
     /* Heart tip */
-
-    ctx.fillStyle =
-      "#ff8fb0";
-
-    heartPath(
-      ctx,
-      7
-    );
-
+    ctx.fillStyle = "#ff8fb0";
+    heartPath(ctx, 7);
     ctx.fill();
-
 
     /* Fletching */
-
-    ctx.strokeStyle =
-      "rgba(200,210,235,.8)";
-
+    ctx.strokeStyle = "rgba(200,210,235,.8)";
     ctx.lineWidth = 1.5;
-
     ctx.beginPath();
-
     ctx.moveTo(-26, 0);
-
     ctx.lineTo(-33, -5);
-
     ctx.moveTo(-26, 0);
-
     ctx.lineTo(-33, 5);
-
     ctx.stroke();
 
-
     ctx.restore();
-
   }
 
-
-  /* =====================================================
-     EXPLOSIONS
-  ===================================================== */
-
-  ctx.globalCompositeOperation =
-    "lighter";
-
-
-  for (
-    let i = bursts.length - 1;
-    i >= 0;
-    i--
-  ) {
-
+  /* EXPLOSIONS (bursts) */
+  ctx.globalCompositeOperation = "lighter";
+  for (let i = bursts.length - 1; i >= 0; i--) {
     const p = bursts[i];
 
-
     p.x += p.vx * dt;
-
     p.y += p.vy * dt;
 
+    p.vx *= Math.pow(0.96, dt);
+    p.vy *= Math.pow(0.96, dt);
 
-    p.vx *=
-      Math.pow(0.96, dt);
-
-    p.vy *=
-      Math.pow(0.96, dt);
-
-
-    p.vy +=
-      0.015 * dt;
-
-
-    p.life -=
-      p.decay * dt;
-
+    p.vy += 0.015 * dt;
+    p.life -= p.decay * dt;
 
     if (p.life <= 0) {
-
       bursts.splice(i, 1);
-
       continue;
-
     }
 
-
-    ctx.globalAlpha =
-      Math.max(
-        0,
-        p.life
-      );
-
-
-    ctx.shadowColor =
-      p.c;
-
+    ctx.globalAlpha = Math.max(0, p.life);
+    ctx.shadowColor = p.c;
     ctx.shadowBlur = 10;
-
-    ctx.fillStyle =
-      p.c;
-
+    ctx.fillStyle = p.c;
 
     if (p.heart) {
-
       ctx.save();
-
-      ctx.translate(
-        p.x,
-        p.y
-      );
-
-      heartPath(
-        ctx,
-        p.s *
-        (
-          0.5 +
-          p.life * 0.5
-        )
-      );
-
+      ctx.translate(p.x, p.y);
+      heartPath(ctx, p.s * (0.5 + p.life * 0.5));
       ctx.fill();
-
       ctx.restore();
-
     } else {
-
       ctx.beginPath();
-
-      ctx.arc(
-        p.x,
-        p.y,
-        p.r * p.life,
-        0,
-        TAU
-      );
-
+      ctx.arc(p.x, p.y, p.r * p.life, 0, TAU);
       ctx.fill();
-
     }
-
   }
-
-
-  ctx.globalCompositeOperation =
-    "source-over";
-
+  ctx.globalCompositeOperation = "source-over";
   ctx.globalAlpha = 1;
 
-
-  /* =====================================================
-     FLOATING HEARTS
-  ===================================================== */
-
-  for (
-    let i = floaters.length - 1;
-    i >= 0;
-    i--
-  ) {
-
+  /* FLOATING HEARTS */
+  for (let i = floaters.length - 1; i >= 0; i--) {
     const f = floaters[i];
-
     f.t += dt;
-
-    f.y +=
-      f.vy * dt;
-
+    f.y += f.vy * dt;
 
     if (f.t > 132) {
-
       floaters.splice(i, 1);
-
       continue;
-
     }
 
-
     ctx.save();
-
-    ctx.translate(
-      f.x,
-      f.y
-    );
-
+    ctx.translate(f.x, f.y);
 
     ctx.globalAlpha =
-      f.t < 24
-        ? f.t / 24
-        : Math.max(
-            0,
-            1 -
-            (f.t - 24) / 108
-          );
+      f.t < 24 ? f.t / 24 : Math.max(0, 1 - (f.t - 24) / 108);
 
-
-    ctx.shadowColor =
-      "rgba(255,130,175,.8)";
-
+    ctx.shadowColor = "rgba(255,130,175,.8)";
     ctx.shadowBlur = 8;
+    ctx.fillStyle = "#ff8fb0";
 
-    ctx.fillStyle =
-      "#ff8fb0";
-
-
-    heartPath(
-      ctx,
-      f.s
-    );
-
+    heartPath(ctx, f.s);
     ctx.fill();
-
     ctx.restore();
-
   }
 
-
-  /* =====================================================
-     LARGE EXPLOSION HEART
-  ===================================================== */
-
-  for (
-    let i = boomHearts.length - 1;
-    i >= 0;
-    i--
-  ) {
-
-    const h =
-      boomHearts[i];
-
+  /* LARGE EXPLOSION HEART */
+  for (let i = boomHearts.length - 1; i >= 0; i--) {
+    const h = boomHearts[i];
     h.t += dt;
 
     const T = 96;
-
-
     if (h.t >= T) {
-
       boomHearts.splice(i, 1);
-
       continue;
-
     }
-
 
     let sc = 1;
-
     let alpha = 1;
-
 
     if (h.t < 21) {
-
-      sc =
-        1 -
-        Math.pow(
-          1 -
-          h.t / 21,
-          3
-        );
-
+      sc = 1 - Math.pow(1 - h.t / 21, 3);
     } else {
-
-      alpha =
-        Math.max(
-          0,
-          1 -
-          (h.t - 21) /
-          (T - 21)
-        );
-
+      alpha = Math.max(0, 1 - (h.t - 21) / (T - 21));
     }
 
-
-    const s =
-      55 * sc;
-
+    const s = 55 * sc;
 
     ctx.save();
+    ctx.translate(h.x, h.y);
+    ctx.globalAlpha = alpha;
 
-    ctx.translate(
-      h.x,
-      h.y
-    );
-
-    ctx.globalAlpha =
-      alpha;
-
-
-    ctx.shadowColor =
-      "rgba(255,120,170,.9)";
-
+    ctx.shadowColor = "rgba(255,120,170,.9)";
     ctx.shadowBlur = 30;
 
-
-    const g =
-      ctx.createLinearGradient(
-        0,
-        -s,
-        0,
-        s
-      );
-
-
-    g.addColorStop(
-      0,
-      "#ff9dbb"
-    );
-
-    g.addColorStop(
-      1,
-      "#ff5f92"
-    );
-
+    const g = ctx.createLinearGradient(0, -s, 0, s);
+    g.addColorStop(0, "#ff9dbb");
+    g.addColorStop(1, "#ff5f92");
 
     ctx.fillStyle = g;
-
-    heartPath(
-      ctx,
-      s
-    );
-
+    heartPath(ctx, s);
     ctx.fill();
-
     ctx.restore();
-
   }
 
-
-  /* =====================================================
-     BOW
-  ===================================================== */
-
+  /* BOW */
   const b = bow();
-
-
   ctx.save();
-
-  ctx.translate(
-    b.x,
-    b.y
-  );
-
+  ctx.translate(b.x, b.y);
   ctx.rotate(aim);
-
-  ctx.lineCap =
-    "round";
-
+  ctx.lineCap = "round";
 
   /* Limbs */
-
-  ctx.strokeStyle =
-    "rgba(215,222,240,.9)";
-
+  ctx.strokeStyle = "rgba(215,222,240,.9)";
   ctx.lineWidth = 3.5;
-
-
   ctx.beginPath();
-
-  ctx.arc(
-    0,
-    0,
-    44,
-    -1.15,
-    1.15
-  );
-
+  ctx.arc(0, 0, 44, -1.15, 1.15);
   ctx.stroke();
-
 
   /* String */
-
-  const tx =
-    Math.cos(1.15) *
-    44;
-
-  const ty =
-    Math.sin(1.15) *
-    44;
-
-
+  const tx = Math.cos(1.15) * 44;
+  const ty = Math.sin(1.15) * 44;
   ctx.lineWidth = 1.2;
-
-
   ctx.beginPath();
-
-  ctx.moveTo(
-    tx,
-    -ty
-  );
-
-  ctx.quadraticCurveTo(
-    -6,
-    0,
-    tx,
-    ty
-  );
-
+  ctx.moveTo(tx, -ty);
+  ctx.quadraticCurveTo(-6, 0, tx, ty);
   ctx.stroke();
 
-
-  /* Arrow */
-
-  ctx.strokeStyle =
-    "rgba(235,238,250,.9)";
-
+  /* Arrow (static bow arrow) */
+  ctx.strokeStyle = "rgba(235,238,250,.9)";
   ctx.lineWidth = 2;
-
-
   ctx.beginPath();
-
-  ctx.moveTo(
-    -4,
-    0
-  );
-
-  ctx.lineTo(
-    52,
-    0
-  );
-
+  ctx.moveTo(-4, 0);
+  ctx.lineTo(52, 0);
   ctx.stroke();
 
-
-  ctx.fillStyle =
-    "#ff8fb0";
-
-
-  heartPath(
-    ctx,
-    6.5
-  );
-
+  ctx.fillStyle = "#ff8fb0";
+  heartPath(ctx, 6.5);
   ctx.fill();
 
-
   ctx.restore();
 
-
-  /* =====================================================
-     ⭐ MESSAGES
-     IMPORTANT:
-     THEY ARE DRAWN LAST SO THEY ARE
-     ALWAYS ABOVE THE OTHER ANIMATIONS.
-  ===================================================== */
-
+  /* MESSAGES drawn last */
   ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
 
-  ctx.textAlign =
-    "center";
+  const fontSize = Math.min(Math.max(W * 0.075, 24), 44);
+  ctx.font = `italic ${fontSize}px Georgia, serif`;
 
-  ctx.textBaseline =
-    "middle";
-
-
-  const fontSize =
-    Math.min(
-      Math.max(
-        W * 0.075,
-        24
-      ),
-      44
-    );
-
-
-  ctx.font =
-    `italic ${fontSize}px Georgia, serif`;
-
-
-  for (
-    let i = messages.length - 1;
-    i >= 0;
-    i--
-  ) {
-
-    const m =
-      messages[i];
-
-
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
     m.t += dt;
 
-
     if (m.t >= m.dur) {
-
-      messages.splice(
-        i,
-        1
-      );
-
+      messages.splice(i, 1);
       continue;
-
     }
-
-
-    /* Appearance */
 
     let alpha = 1;
-
-
     if (m.t < 42) {
-
-      alpha =
-        m.t / 42;
-
+      alpha = m.t / 42;
+    } else if (m.t > m.dur - 66) {
+      alpha = (m.dur - m.t) / 66;
     }
 
-    /*
-       Disappearance
-    */
-
-    else if (
-      m.t >
-      m.dur - 66
-    ) {
-
-      alpha =
-        (
-          m.dur - m.t
-        ) / 66;
-
-    }
-
-
-    /* Slight zoom */
-
-    const sc =
-      0.92 +
-      0.08 *
-      Math.min(
-        1,
-        m.t / 30
-      );
-
+    const sc = 0.92 + 0.08 * Math.min(1, m.t / 30);
 
     ctx.save();
+    ctx.translate(W / 2, m.y);
+    ctx.scale(sc, sc);
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
 
-
-    ctx.translate(
-      W / 2,
-      m.y
-    );
-
-
-    ctx.scale(
-      sc,
-      sc
-    );
-
-
-    ctx.globalAlpha =
-      Math.max(
-        0,
-        Math.min(
-          1,
-          alpha
-        )
-      );
-
-
-    /*
-       Glow around the text
-    */
-
-    ctx.shadowColor =
-      "rgba(255,150,190,0.95)";
-
+    ctx.shadowColor = "rgba(255,150,190,0.95)";
     ctx.shadowBlur = 25;
 
-
-    ctx.fillStyle =
-      "#ffffff";
-
-
-    ctx.fillText(
-      m.text,
-      0,
-      0
-    );
-
-
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(m.text, 0, 0);
     ctx.restore();
-
   }
-
-
   ctx.restore();
-
-
   ctx.globalAlpha = 1;
 
-
-  requestAnimationFrame(
-    loop
-  );
-
+  requestAnimationFrame(loop);
 }
-
 
 /* =========================================================
    FULLSCREEN
 ========================================================= */
-
-const fullscreenBtn =
-  document.getElementById(
-    "fullscreenBtn"
-  );
-
-
-fullscreenBtn.addEventListener(
-  "click",
-  async (e) => {
-
-    e.stopPropagation();
-
-    try {
-
-      if (!document.fullscreenElement) {
-
-        await document.documentElement.requestFullscreen();
-
-        fullscreenBtn.textContent =
-          "✕ Exit";
-
-      } else {
-
-        await document.exitFullscreen();
-
-        fullscreenBtn.textContent =
-          "⛶ Fullscreen";
-
-      }
-
-    } catch (error) {
-
-      console.log(
-        "Fullscreen mode unavailable:",
-        error
-      );
-
-    }
-
-  }
-);
-
-
-/*
-   If the user exits fullscreen
-   with the Escape key.
-*/
-
-document.addEventListener(
-  "fullscreenchange",
-  () => {
-
-    if (
-      document.fullscreenElement
-    ) {
-
-      fullscreenBtn.textContent =
-        "✕ Exit";
-
+const fullscreenBtn = document.getElementById("fullscreenBtn");
+fullscreenBtn.addEventListener("click", async (e) => {
+  e.stopPropagation();
+  try {
+    if (!document.fullscreenElement) {
+      await document.documentElement.requestFullscreen();
+      fullscreenBtn.textContent = "✕ Exit";
     } else {
-
-      fullscreenBtn.textContent =
-        "⛶ Fullscreen";
-
+      await document.exitFullscreen();
+      fullscreenBtn.textContent = "⛶ Fullscreen";
     }
-
+  } catch (error) {
+    console.log("Fullscreen mode unavailable:", error);
   }
-);
+});
 
+document.addEventListener("fullscreenchange", () => {
+  if (document.fullscreenElement) {
+    fullscreenBtn.textContent = "✕ Exit";
+  } else {
+    fullscreenBtn.textContent = "⛶ Fullscreen";
+  }
+});
 
 /* =========================================================
    STARTUP
 ========================================================= */
-
-requestAnimationFrame(
-  loop
-);
+requestAnimationFrame(loop);
 
 </script>
 
 </body>
- </html>
+      </html>
+      
